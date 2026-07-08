@@ -45,17 +45,7 @@ extension RallyStageDTO {
         let end = isoFormatter.date(from: scheduled_end) ?? Date()
         let translation = TranslationService.shared
 
-        let eventStatus: String = {
-            switch status?.lowercased() {
-            case "closed", "completed": return "completed"
-            case "live", "running": return "live"
-            case "cancelled": return "cancelled"
-            default:
-                let now = Date()
-                if now >= start && now <= end { return "live" }
-                return now > end ? "completed" : "upcoming"
-            }
-        }()
+        let eventStatus: String = normalizeSportradarStatus(status)
 
         let country = venue?.country ?? venue?.countryCode ?? ""
         let surfaceStr = guessSurface(country: country)

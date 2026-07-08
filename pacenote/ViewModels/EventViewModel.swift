@@ -74,6 +74,15 @@ final class EventViewModel {
     }
 }
 
+func normalizeSportradarStatus(_ srStatus: String?) -> String {
+    switch srStatus?.lowercased() {
+    case "closed", "finished": return "completed"
+    case "live", "running", "started": return "live"
+    case "cancelled": return "cancelled"
+    default: return "upcoming"
+    }
+}
+
 extension RallyStageDTO {
     func toStageModel(eventId: String) -> Stage {
         let isoFormatter = ISO8601DateFormatter()
@@ -86,7 +95,7 @@ extension RallyStageDTO {
             distance: 0,
             surface: "",
             surfaceCN: "",
-            statusRaw: status ?? "upcoming",
+            statusRaw: normalizeSportradarStatus(status),
             startTime: start
         )
     }
