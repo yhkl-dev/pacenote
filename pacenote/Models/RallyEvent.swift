@@ -1,8 +1,7 @@
 import Foundation
-import SwiftData
 
-@Model
-final class RallyEvent {
+struct RallyEvent: Identifiable, Codable {
+    var id: String { eventId }
     var eventId: String
     var name: String
     var nameCN: String
@@ -15,9 +14,9 @@ final class RallyEvent {
     var statusRaw: String
     var season: Int
     var roundNumber: Int
-    var isERC: Bool
-    var coverImageURL: String?
-    var websiteURL: String?
+    var isERC: Bool = false
+    var coverImageURL: String? = nil
+    var websiteURL: String? = nil
 
     var displayName: String {
         nameCN.isEmpty ? name : nameCN
@@ -25,40 +24,6 @@ final class RallyEvent {
 
     var status: EventStatus {
         EventStatus(rawValue: statusRaw) ?? .upcoming
-    }
-
-    init(
-        eventId: String,
-        name: String,
-        nameCN: String = "",
-        country: String,
-        countryCN: String = "",
-        surface: String,
-        surfaceCN: String = "",
-        startDate: Date,
-        endDate: Date,
-        statusRaw: String,
-        season: Int,
-        roundNumber: Int,
-        isERC: Bool = false,
-        coverImageURL: String? = nil,
-        websiteURL: String? = nil
-    ) {
-        self.eventId = eventId
-        self.name = name
-        self.nameCN = nameCN
-        self.country = country
-        self.countryCN = countryCN
-        self.surface = surface
-        self.surfaceCN = surfaceCN
-        self.startDate = startDate
-        self.endDate = endDate
-        self.statusRaw = statusRaw
-        self.season = season
-        self.roundNumber = roundNumber
-        self.isERC = isERC
-        self.coverImageURL = coverImageURL
-        self.websiteURL = websiteURL
     }
 }
 

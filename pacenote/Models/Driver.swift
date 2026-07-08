@@ -1,8 +1,7 @@
 import Foundation
-import SwiftData
 
-@Model
-final class Driver {
+struct Driver: Identifiable, Codable {
+    var id: String { driverId }
     var driverId: String
     var firstName: String
     var lastName: String
@@ -20,38 +19,6 @@ final class Driver {
 
     var displayName: String {
         "\(firstName) \(lastName)"
-    }
-
-    init(
-        driverId: String,
-        firstName: String,
-        lastName: String,
-        nationality: String,
-        nationalityCN: String = "",
-        birthDate: Date? = nil,
-        team: String,
-        teamCN: String = "",
-        group: String,
-        carName: String,
-        carNumber: Int,
-        coDriverName: String? = nil,
-        bioShort: String? = nil,
-        imageURL: String? = nil
-    ) {
-        self.driverId = driverId
-        self.firstName = firstName
-        self.lastName = lastName
-        self.nationality = nationality
-        self.nationalityCN = nationalityCN
-        self.birthDate = birthDate
-        self.team = team
-        self.teamCN = teamCN
-        self.group = group
-        self.carName = carName
-        self.carNumber = carNumber
-        self.coDriverName = coDriverName
-        self.bioShort = bioShort
-        self.imageURL = imageURL
     }
 }
 

@@ -98,10 +98,11 @@ struct SportradarSummaryResponse: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let stage = try container.decode(StageWithCompetitors.self, forKey: .stage)
-        results = stage.competitors.map { comp in
-            StageResult(
+        results = stage.competitors.compactMap { comp in
+            guard let pos = comp.result.position else { return nil }
+            return StageResult(
                 stageId: "overall",
-                position: comp.result.position,
+                position: pos,
                 driverName: comp.name,
                 driverId: comp.id,
                 carNumber: comp.carNumber ?? 0,
@@ -139,7 +140,7 @@ struct SRCompetitor: Decodable {
 }
 
 struct SRResult: Decodable {
-    let position: Int
+    let position: Int?
     let points: Double?
     let status: String?
     let gap: String?

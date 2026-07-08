@@ -1,8 +1,7 @@
 import Foundation
-import SwiftData
 
-@Model
-final class Stage {
+struct Stage: Identifiable, Codable {
+    var id: String { stageId }
     var stageId: String
     var eventId: String
     var name: String
@@ -16,30 +15,6 @@ final class Stage {
 
     var status: EventStatus {
         EventStatus(rawValue: statusRaw) ?? .upcoming
-    }
-
-    init(
-        stageId: String,
-        eventId: String,
-        name: String,
-        stageNumber: Int,
-        distance: Double,
-        surface: String,
-        surfaceCN: String = "",
-        statusRaw: String,
-        startTime: Date? = nil,
-        firstCarTime: Date? = nil
-    ) {
-        self.stageId = stageId
-        self.eventId = eventId
-        self.name = name
-        self.stageNumber = stageNumber
-        self.distance = distance
-        self.surface = surface
-        self.surfaceCN = surfaceCN
-        self.startTime = startTime
-        self.firstCarTime = firstCarTime
-        self.statusRaw = statusRaw
     }
 }
 
