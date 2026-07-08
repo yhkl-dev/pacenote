@@ -40,7 +40,25 @@ struct EventDetailView: View {
         .background(MagazineColors.background)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if let mapURL = rallyMapsURL() {
+                    Link(destination: mapURL) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "map")
+                            Text("Maps")
+                        }
+                        .font(MagazineFont.monoMedium(11))
+                        .foregroundColor(MagazineColors.accent)
+                    }
+                }
+            }
+        }
         .task { await viewModel.loadEventDetail(eventId: eventId) }
+    }
+
+    private func rallyMapsURL() -> URL? {
+        URL(string: "https://www.rally-maps.com/WRC")
     }
 
     private var overallTab: some View {
