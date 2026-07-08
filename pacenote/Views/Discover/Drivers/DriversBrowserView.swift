@@ -1,6 +1,73 @@
 import SwiftUI
 
+@MainActor
+@Observable
+final class DriversBrowserViewModel {
+    var drivers: [DriverSummary] = []
+    var isLoading = true
+    var errorMessage: String?
+
+    func load() async {
+        isLoading = true
+        do {
+            let raw = try await APIClient.shared.fetchRaw("/api/event/sr:stage:1315613/summary")
+            let data = try JSONDecoder().decode(RawSummaryJSON.self, from: raw)
+            drivers = data.extractDrivers()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+}
+
+struct DriverSummary: Identifiable {
+    let id: String
+    let name: String
+    let carNumber: Int
+    let position: Int?
+    let status: String?
+}
+
+struct RawSummaryJSON: Decodable {
+    let stage: RawStageData
+
+    struct RawStageData: Decodable {
+        let competitors: [RawComp]
+    }
+
+    struct RawComp: Decodable {
+        let id: String
+        let name: String
+        let carNumber: Int?
+        let result: RawResult?
+
+        enum CodingKeys: String, CodingKey {
+            case id, name, result
+            case carNumber = "car_number"
+        }
+    }
+
+    struct RawResult: Decodable {
+        let position: Int?
+        let status: String?
+    }
+
+    func extractDrivers() -> [DriverSummary] {
+        stage.competitors.map { comp in
+            DriverSummary(
+                id: comp.id,
+                name: comp.name,
+                carNumber: comp.carNumber ?? 0,
+                position: comp.result?.position,
+                status: comp.result?.status
+            )
+        }
+    }
+}
+
 struct DriversBrowserView: View {
+    @State private var vm = DriversBrowserViewModel()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -8,12 +75,18 @@ struct DriversBrowserView: View {
                     .font(MagazineFont.serifBold(28))
                     .foregroundColor(MagazineColors.textPrimary)
 
-                VStack(spacing: 0) {
-                    ForEach(driverList) { driver in
-                        NavigationLink(destination: DriverProfileView(driverId: driver.id)) {
-                            DriverBrowserRow(driver: driver)
+                if vm.isLoading {
+                    ProgressView().padding(40).tint(MagazineColors.accent)
+                } else if let error = vm.errorMessage {
+                    Text(error).font(MagazineFont.caption).foregroundColor(MagazineColors.textSecondary)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(vm.drivers.prefix(30)) { driver in
+                            NavigationLink(destination: DriverProfileView(driverId: driver.id)) {
+                                DriverBrowserRow(driver: driver)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -22,33 +95,12 @@ struct DriversBrowserView: View {
         .background(MagazineColors.background)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .task { await vm.load() }
     }
-
-    private var driverList: [DriverPreview] {
-        [
-            DriverPreview(id: "rovanpera", name: "Kalle Rovanperä", team: "Toyota Gazoo Racing", car: "GR Yaris Rally1", number: 69, nationality: "芬兰"),
-            DriverPreview(id: "neuville", name: "Thierry Neuville", team: "Hyundai Shell Mobis", car: "i20 N Rally1", number: 11, nationality: "比利时"),
-            DriverPreview(id: "tanak", name: "Ott Tänak", team: "Hyundai Shell Mobis", car: "i20 N Rally1", number: 8, nationality: "爱沙尼亚"),
-            DriverPreview(id: "evans", name: "Elfyn Evans", team: "Toyota Gazoo Racing", car: "GR Yaris Rally1", number: 33, nationality: "英国"),
-            DriverPreview(id: "katsuta", name: "Takamoto Katsuta", team: "Toyota Gazoo Racing", car: "GR Yaris Rally1", number: 18, nationality: "日本"),
-            DriverPreview(id: "fourmaux", name: "Adrien Fourmaux", team: "M-Sport Ford", car: "Puma Rally1", number: 16, nationality: "法国"),
-            DriverPreview(id: "lappi", name: "Esapekka Lappi", team: "Hyundai Shell Mobis", car: "i20 N Rally1", number: 4, nationality: "芬兰"),
-            DriverPreview(id: "munster", name: "Grégoire Munster", team: "M-Sport Ford", car: "Puma Rally1", number: 13, nationality: "卢森堡"),
-        ]
-    }
-}
-
-struct DriverPreview: Identifiable {
-    let id: String
-    let name: String
-    let team: String
-    let car: String
-    let number: Int
-    let nationality: String
 }
 
 struct DriverBrowserRow: View {
-    let driver: DriverPreview
+    let driver: DriverSummary
 
     var body: some View {
         HStack(spacing: 14) {
@@ -56,8 +108,8 @@ struct DriverBrowserRow: View {
                 RoundedRectangle(cornerRadius: 24)
                     .fill(MagazineColors.surfaceAlt)
                     .frame(width: 40, height: 40)
-                Text("\(driver.number)")
-                    .font(MagazineFont.monoBold(14))
+                Text(String(driver.name.prefix(2)).uppercased())
+                    .font(MagazineFont.monoBold(12))
                     .foregroundColor(MagazineColors.accent)
             }
 
@@ -65,12 +117,18 @@ struct DriverBrowserRow: View {
                 Text(driver.name)
                     .font(MagazineFont.body.weight(.medium))
                     .foregroundColor(MagazineColors.textPrimary)
-                Text("\(driver.nationality) · \(driver.team)")
+                Text("#\(driver.carNumber) · \(driver.status ?? "—")")
                     .font(MagazineFont.caption)
                     .foregroundColor(MagazineColors.textSecondary)
             }
 
             Spacer()
+
+            if let pos = driver.position {
+                Text("P\(pos)")
+                    .font(MagazineFont.monoBold(14))
+                    .foregroundColor(pos <= 3 ? MagazineColors.accent : MagazineColors.textSecondary)
+            }
 
             Image(systemName: "chevron.right")
                 .font(.caption)
