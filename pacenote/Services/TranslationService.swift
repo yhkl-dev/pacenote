@@ -30,16 +30,31 @@ final class TranslationService {
     private func loadFallbackTranslations() {
         rallyNames = [
             "WRC Rallye Monte-Carlo": "蒙特卡洛拉力赛",
+            "Rally de Monte-Carlo": "蒙特卡洛拉力赛",
             "WRC Arctic Rally Finland": "芬兰北极拉力赛",
             "WRC Safari Rally Kenya": "肯尼亚野生动物园拉力赛",
+            "Rally Kenya": "肯尼亚拉力赛",
             "WRC Rally Sweden": "瑞典拉力赛",
+            "Rally Sweden": "瑞典拉力赛",
             "WRC Rally Portugal": "葡萄牙拉力赛",
+            "Rally de Portugal": "葡萄牙拉力赛",
             "WRC Rally Italia Sardegna": "意大利撒丁岛拉力赛",
+            "Rally Italia": "意大利拉力赛",
             "WRC Rally Estonia": "爱沙尼亚拉力赛",
+            "Rally Estonia": "爱沙尼亚拉力赛",
             "WRC Rally Finland": "芬兰拉力赛",
+            "Rally Finland": "芬兰拉力赛",
             "WRC Acropolis Rally Greece": "希腊卫城拉力赛",
+            "Rally Greece": "希腊拉力赛",
             "WRC Rally Chile": "智利拉力赛",
+            "Rally Chile": "智利拉力赛",
             "WRC Central European Rally": "中欧拉力赛",
+            "Rally de Paraguay": "巴拉圭拉力赛",
+            "Rally Islas Canarias": "加那利群岛拉力赛",
+            "Rally Croatia": "克罗地亚拉力赛",
+            "Rally Japan": "日本拉力赛",
+            "Rally Saudi Arabia": "沙特阿拉伯拉力赛",
+            "World Rally Championship 2026": "世界拉力锦标赛 2026",
             "WRC Rally Japan": "日本拉力赛"
         ]
 
