@@ -45,7 +45,13 @@ struct EventDetailView: View {
 
     private var overallTab: some View {
         ScrollView {
-            if viewModel.isLoading {
+            if let error = viewModel.errorMessage {
+                VStack(spacing: 16) {
+                    Text(error).font(MagazineFont.caption).foregroundColor(MagazineColors.textSecondary)
+                    Button("重试") { Task { await viewModel.loadEventDetail(eventId: eventId) } }
+                        .font(.subheadline.weight(.medium)).foregroundColor(MagazineColors.accent)
+                }.padding(60)
+            } else if viewModel.isLoading {
                 ProgressView().padding(60).tint(MagazineColors.accent)
             } else {
                 VStack(spacing: 0) {

@@ -29,7 +29,8 @@ final class EventViewModel {
             stages = s
             overallStandings = o
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "\(error.localizedDescription)"
+            print("EventDetail error: \(error)")
         }
 
         isLoading = false
