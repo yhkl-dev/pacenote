@@ -15,68 +15,14 @@ final class CalendarViewModel {
         errorMessage = nil
 
         do {
-            let raw = try await apiClient.fetchRaw("/api/seasons")
-            let decoded = try JSONDecoder().decode(SportradarSeasonsResponse.self, from: raw)
-            let wrcSeasons = decoded.stages.filter { isWRC($0) }
-            events = try await resolveEvents(from: wrcSeasons)
+            let raw = try await apiClient.fetchRaw("/api/calendar")
+            let decoded = try JSONDecoder().decode(ScheduleResponse.self, from: raw)
+            events = decoded.stages.map { $0.toModel() }
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isLoading = false
-    }
-
-    private func isWRC(_ season: SportradarSeason) -> Bool {
-        season.description.lowercased().contains("world rally championship")
-    }
-
-    private func resolveEvents(from seasons: [SportradarSeason]) async throws -> [RallyEvent] {
-        let isoFormatter = ISO8601DateFormatter()
-        var allEvents: [RallyEvent] = []
-
-        for season in seasons {
-            let start = isoFormatter.date(from: season.scheduled) ?? Date()
-            let end = isoFormatter.date(from: season.scheduled_end) ?? Date()
-
-            if season.sportEvents.isEmpty {
-                let event = RallyEvent(
-                    eventId: season.id,
-                    name: season.description,
-                    nameCN: TranslationService.shared.translateRallyName(season.description),
-                    country: "",
-                    countryCN: "",
-                    surface: "",
-                    surfaceCN: "",
-                    startDate: start,
-                    endDate: end,
-                    statusRaw: season.isOngoing ? "live" : (end < Date() ? "completed" : "upcoming"),
-                    season: Calendar.current.component(.year, from: start),
-                    roundNumber: 0
-                )
-                allEvents.append(event)
-            } else {
-                for (index, sportEvent) in season.sportEvents.enumerated() {
-                    let eventStart = isoFormatter.date(from: sportEvent.scheduled) ?? Date()
-                    let eventEnd = isoFormatter.date(from: sportEvent.scheduledEnd ?? sportEvent.scheduled) ?? eventStart
-                    allEvents.append(RallyEvent(
-                        eventId: sportEvent.id,
-                        name: sportEvent.name,
-                        nameCN: TranslationService.shared.translateRallyName(sportEvent.name),
-                        country: sportEvent.venue?.countryName ?? "",
-                        countryCN: sportEvent.venue?.countryName ?? "",
-                        surface: "",
-                        surfaceCN: "",
-                        startDate: eventStart,
-                        endDate: eventEnd,
-                        statusRaw: sportEvent.status == "live" ? "live" : (eventEnd < Date() ? "completed" : "upcoming"),
-                        season: Calendar.current.component(.year, from: eventStart),
-                        roundNumber: index + 1
-                    ))
-                }
-            }
-        }
-
-        return allEvents.isEmpty ? await MockDataService.shared.seasonCalendar() : allEvents
     }
 
     var liveEvents: [RallyEvent] {
@@ -92,54 +38,83 @@ final class CalendarViewModel {
     }
 }
 
-struct SportradarSeasonsResponse: Decodable {
-    let stages: [SportradarSeason]
+struct ScheduleResponse: Decodable {
+    let stages: [RallyStageDTO]
 }
 
-struct SportradarSeason: Decodable {
+struct RallyStageDTO: Decodable {
     let id: String
     let description: String
     let scheduled: String
     let scheduledEnd: String?
+    let status: String?
     let type: String?
-    let sportEvents: [SportradarSportEvent]
+    let venue: RallyVenueDTO?
+    let stages: [RallyStageDTO]?
 
     var scheduled_end: String {
         scheduledEnd ?? scheduled
     }
 
-    var isOngoing: Bool {
-        let iso = ISO8601DateFormatter()
-        let now = Date()
-        let start = iso.date(from: scheduled) ?? now
-        let end = iso.date(from: scheduled_end) ?? now
-        return now >= start && now <= end
-    }
+    func toModel() -> RallyEvent {
+        let isoFormatter = ISO8601DateFormatter()
+        let start = isoFormatter.date(from: scheduled) ?? Date()
+        let end = isoFormatter.date(from: scheduled_end) ?? Date()
+        let translation = TranslationService.shared
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        description = try container.decode(String.self, forKey: .description)
-        scheduled = try container.decode(String.self, forKey: .scheduled)
-        scheduledEnd = try container.decodeIfPresent(String.self, forKey: .scheduledEnd)
-        type = try container.decodeIfPresent(String.self, forKey: .type)
-        sportEvents = try container.decodeIfPresent([SportradarSportEvent].self, forKey: .sportEvents) ?? []
-    }
+        let eventStatus: String = {
+            switch status?.lowercased() {
+            case "closed", "completed": return "completed"
+            case "live", "running": return "live"
+            case "cancelled": return "cancelled"
+            default:
+                let now = Date()
+                if now >= start && now <= end { return "live" }
+                return now > end ? "completed" : "upcoming"
+            }
+        }()
 
-    enum CodingKeys: CodingKey {
-        case id, description, scheduled, scheduledEnd, type, sportEvents
+        let country = venue?.country ?? venue?.countryCode ?? ""
+        let surface = type == "event" && venue != nil ? guessSurface(country: country) : ""
+
+        return RallyEvent(
+            eventId: id,
+            name: description,
+            nameCN: translation.translateRallyName(description),
+            country: country,
+            countryCN: translation.translateCountry(country),
+            surface: surface,
+            surfaceCN: translation.translateSurface(surface),
+            startDate: start,
+            endDate: end,
+            statusRaw: eventStatus,
+            season: Calendar.current.component(.year, from: start),
+            roundNumber: 0
+        )
     }
 }
 
-struct SportradarSportEvent: Decodable {
-    let id: String
-    let name: String
-    let scheduled: String
-    let scheduledEnd: String?
-    let status: String?
-    let venue: SportradarVenue?
+struct RallyVenueDTO: Decodable {
+    let name: String?
+    let city: String?
+    let country: String?
+    let countryCode: String?
+    let coordinates: String?
+    let timezone: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, city, country
+        case countryCode = "country_code"
+        case coordinates, timezone
+    }
 }
 
-struct SportradarVenue: Decodable {
-    let countryName: String?
+private func guessSurface(country: String) -> String {
+    switch country {
+    case "Sweden": return "Snow"
+    case "Monaco", "France": return "Mixed"
+    case "Kenya", "Portugal", "Italy", "Greece", "Estonia", "Finland", "Chile", "Paraguay", "Saudi Arabia": return "Gravel"
+    case "Japan", "Croatia", "Belgium", "Spain", "Germany", "Austria", "Czech Republic", "Poland": return "Tarmac"
+    default: return ""
+    }
 }
