@@ -83,11 +83,76 @@ struct EventDetailView: View {
     }
 
     private var entriesTab: some View {
-        placeholderView(icon: "person.2", text: L10n.Loading.entries)
+        ScrollView {
+            if viewModel.isLoading {
+                ProgressView().padding(60).tint(MagazineColors.accent)
+            } else if viewModel.overallStandings.isEmpty {
+                placeholderView(icon: "person.2", text: L10n.Loading.entries)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(viewModel.overallStandings) { result in
+                        HStack(spacing: 12) {
+                            Text("\(result.position)")
+                                .font(MagazineFont.position)
+                                .foregroundColor(result.position <= 3 ? MagazineColors.accent : MagazineColors.textTertiary)
+                                .frame(width: 28, alignment: .leading)
+                            Text(result.driverName)
+                                .font(MagazineFont.body.weight(.medium))
+                                .foregroundColor(MagazineColors.textPrimary)
+                            Spacer()
+                            Text("#\(result.carNumber)")
+                                .font(MagazineFont.timingSmall)
+                                .foregroundColor(MagazineColors.textTertiary)
+                        }
+                        .padding(.vertical, 12)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(MagazineColors.divider).frame(height: 0.5)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+            }
+        }
     }
 
     private var scheduleTab: some View {
-        placeholderView(icon: "clock", text: L10n.Loading.schedule)
+        ScrollView {
+            if viewModel.isLoading {
+                ProgressView().padding(60).tint(MagazineColors.accent)
+            } else if viewModel.stages.isEmpty {
+                placeholderView(icon: "clock", text: L10n.Loading.schedule)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(viewModel.stages) { stage in
+                        HStack(spacing: 14) {
+                            Text("SS\(stage.stageNumber)")
+                                .font(MagazineFont.monoBold(13))
+                                .foregroundColor(MagazineColors.accent)
+                                .frame(width: 50, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(stage.name)
+                                    .font(MagazineFont.body.weight(.medium))
+                                    .foregroundColor(MagazineColors.textPrimary)
+                                if stage.distance > 0 {
+                                    Text(String(format: "%.1f km", stage.distance))
+                                        .font(MagazineFont.timingSmall)
+                                        .foregroundColor(MagazineColors.textTertiary)
+                                }
+                            }
+                            Spacer()
+                            StatusDot(status: stage.status)
+                        }
+                        .padding(.vertical, 14)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(MagazineColors.divider).frame(height: 0.5)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+            }
+        }
     }
 
     private func placeholderView(icon: String, text: String) -> some View {
