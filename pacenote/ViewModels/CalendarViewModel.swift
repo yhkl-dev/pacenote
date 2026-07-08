@@ -8,7 +8,6 @@ final class CalendarViewModel {
     var isLoading = false
     var errorMessage: String?
 
-    var dataSource: DataSourceMode = .auto
     private let apiClient = APIClient.shared
 
     func loadSeasonCalendar() async {
@@ -16,15 +15,10 @@ final class CalendarViewModel {
         errorMessage = nil
 
         do {
-            if dataSource == .mock {
-                events = await MockDataService.shared.seasonCalendar()
-            } else {
-                let raw = try await apiClient.fetchRaw("/api/calendar")
-                let events = try decodeCalendar(raw)
-                self.events = events
-            }
+            let raw = try await apiClient.fetchRaw("/api/calendar")
+            events = try decodeCalendar(raw)
         } catch {
-            events = await MockDataService.shared.seasonCalendar()
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
@@ -33,7 +27,6 @@ final class CalendarViewModel {
     private func decodeCalendar(_ data: Data) throws -> [RallyEvent] {
         let decoder = JSONDecoder()
         let isoFormatter = ISO8601DateFormatter()
-
         let translation = TranslationService.shared
 
         if let array = try? decoder.decode([CalendarEventDTO].self, from: data) {
@@ -87,18 +80,14 @@ struct CalendarEventDTO: Decodable {
         let start = isoFormatter.date(from: startDate) ?? Date()
         let end = isoFormatter.date(from: endDate) ?? Date()
 
-        let cnName = _cn?.name ?? translation.translateRallyName(name)
-        let cnCountry = _cn?.country ?? translation.translateCountry(country)
-        let cnSurface = _cn?.surface ?? translation.translateSurface(surface)
-
         return RallyEvent(
             eventId: eventId,
             name: name,
-            nameCN: cnName,
+            nameCN: _cn?.name ?? translation.translateRallyName(name),
             country: country,
-            countryCN: cnCountry,
+            countryCN: _cn?.country ?? translation.translateCountry(country),
             surface: surface,
-            surfaceCN: cnSurface,
+            surfaceCN: _cn?.surface ?? translation.translateSurface(surface),
             startDate: start,
             endDate: end,
             statusRaw: status ?? "upcoming",

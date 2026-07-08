@@ -17,7 +17,6 @@ final class EventViewModel {
         return parseGapToSeconds(gapStr)
     }
 
-    var dataSource: DataSourceMode = .auto
     private let apiClient = APIClient.shared
 
     func loadEventDetail(eventId: String) async {
@@ -25,21 +24,13 @@ final class EventViewModel {
         errorMessage = nil
 
         do {
-            if dataSource == .mock {
-                let mock = MockDataService.shared
-                stages = await mock.stages(for: eventId)
-                overallStandings = await mock.overallStandings()
-            } else {
-                async let stagesTask = fetchStages(eventId: eventId)
-                async let overallTask = fetchOverall(eventId: eventId)
-                let (s, o) = try await (stagesTask, overallTask)
-                stages = s
-                overallStandings = o
-            }
+            async let stagesTask = fetchStages(eventId: eventId)
+            async let overallTask = fetchOverall(eventId: eventId)
+            let (s, o) = try await (stagesTask, overallTask)
+            stages = s
+            overallStandings = o
         } catch {
-            let mock = MockDataService.shared
-            stages = await mock.stages(for: eventId)
-            overallStandings = await mock.overallStandings()
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
@@ -47,15 +38,11 @@ final class EventViewModel {
 
     func loadStageResults(eventId: String, stageId: String) async {
         do {
-            if dataSource == .mock {
-                selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
-            } else {
-                let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/stage/\(stageId)")
-                let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
-                selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
-            }
+            let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/stage/\(stageId)")
+            let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
+            selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
         } catch {
-            selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -104,9 +91,18 @@ struct StageDTO: Decodable {
     func toModel(eventId: String) -> Stage {
         let translation = TranslationService.shared
         let isoFormatter = ISO8601DateFormatter()
-        let cnSurface = _cn?.surface ?? surface.map { translation.translateSurface($0) } ?? ""
-        let cnStatus = _cn?.status
-        return Stage(stageId: stageId, eventId: eventId, name: name, stageNumber: stageNumber, distance: distance ?? 0, surface: surface ?? "", surfaceCN: cnSurface, statusRaw: status ?? "upcoming", startTime: startTime.flatMap { isoFormatter.date(from: $0) }, firstCarTime: firstCarTime.flatMap { isoFormatter.date(from: $0) })
+        return Stage(
+            stageId: stageId,
+            eventId: eventId,
+            name: name,
+            stageNumber: stageNumber,
+            distance: distance ?? 0,
+            surface: surface ?? "",
+            surfaceCN: _cn?.surface ?? surface.map { translation.translateSurface($0) } ?? "",
+            statusRaw: status ?? "upcoming",
+            startTime: startTime.flatMap { isoFormatter.date(from: $0) },
+            firstCarTime: firstCarTime.flatMap { isoFormatter.date(from: $0) }
+        )
     }
 }
 
