@@ -1,20 +1,23 @@
-//
-//  pacenoteApp.swift
-//  pacenote
-//
-//  Created by Kai Yang on 2026/7/7.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct pacenoteApp: App {
+    @AppStorage("appLanguage") private var appLanguage = "zh-Hans"
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            RallyEvent.self,
+            Stage.self,
+            StageResult.self,
+            Driver.self,
+            Standing.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -25,7 +28,9 @@ struct pacenoteApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
+                .preferredColorScheme(.dark)
+                .environment(\.locale, Locale(identifier: appLanguage))
         }
         .modelContainer(sharedModelContainer)
     }
