@@ -33,24 +33,24 @@ final class StandingsViewModel {
         do {
             let raw = try await apiClient.fetchRaw("/api/standings/\(currentSeason)")
             let decoded = try JSONDecoder().decode(ChampionshipResponse.self, from: raw)
-
-            driverStandings = decoded.drivers.enumerated().map { index, dto in
-                dto.toModel(position: index + 1, season: currentSeason, category: "drivers")
-            }
-            codriverStandings = decoded.codrivers.enumerated().map { index, dto in
-                dto.toModel(position: index + 1, season: currentSeason, category: "codrivers")
-            }
-            manufacturerStandings = decoded.manufacturers.enumerated().map { index, dto in
-                dto.toModel(position: index + 1, season: currentSeason, category: "manufacturers")
-            }
+            mapStandings(decoded)
         } catch {
-            let mock = MockDataService.shared
-            driverStandings = await mock.driverStandings()
-            codriverStandings = await mock.codriverStandings()
-            manufacturerStandings = await mock.manufacturerStandings()
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
+    }
+
+    private func mapStandings(_ response: ChampionshipResponse) {
+        driverStandings = response.drivers.enumerated().map { index, dto in
+            dto.toModel(position: index + 1, season: currentSeason, category: "drivers")
+        }
+        codriverStandings = response.codrivers.enumerated().map { index, dto in
+            dto.toModel(position: index + 1, season: currentSeason, category: "codrivers")
+        }
+        manufacturerStandings = response.manufacturers.enumerated().map { index, dto in
+            dto.toModel(position: index + 1, season: currentSeason, category: "manufacturers")
+        }
     }
 }
 

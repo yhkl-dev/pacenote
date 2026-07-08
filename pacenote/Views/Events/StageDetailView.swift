@@ -21,7 +21,6 @@ struct StageDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.loadStageResults(eventId: eventId, stageId: stage.stageId)
-            await viewModel.loadStageMeta(stageId: stage.stageId)
         }
     }
 
@@ -29,10 +28,6 @@ struct StageDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 stageHero
-
-                if let meta = viewModel.selectedStageMeta {
-                    stageMetaCard(meta)
-                }
 
                 if viewModel.isLoading && viewModel.selectedStageResults.isEmpty {
                     ProgressView().padding(60).frame(maxWidth: .infinity).tint(MagazineColors.accent)
@@ -93,117 +88,6 @@ struct StageDetailView: View {
         .magazineCard()
     }
 
-    private func stageMetaCard(_ meta: StageMetadata) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            stageMapPlaceholder(meta)
-
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.Stage.weather)
-                        .font(MagazineFont.caption)
-                        .foregroundColor(MagazineColors.textTertiary)
-                    HStack(spacing: 6) {
-                        Image(systemName: meta.weatherIcon)
-                            .foregroundColor(weatherColor(meta.weather))
-                        Text(weatherLabel(meta.weather))
-                            .font(MagazineFont.body.weight(.medium))
-                            .foregroundColor(MagazineColors.textPrimary)
-                    }
-                    Text("\(meta.temperature)°C")
-                        .font(MagazineFont.monoMedium(13))
-                        .foregroundColor(MagazineColors.textSecondary)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.Stage.elevation)
-                        .font(MagazineFont.caption)
-                        .foregroundColor(MagazineColors.textTertiary)
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.up")
-                            .font(.caption)
-                            .foregroundColor(MagazineColors.live)
-                        Text("+\(meta.elevationGain)m")
-                            .font(MagazineFont.monoMedium(13))
-                            .foregroundColor(MagazineColors.live)
-                        Image(systemName: "arrow.down")
-                            .font(.caption)
-                            .foregroundColor(MagazineColors.completed)
-                            .padding(.leading, 4)
-                        Text("-\(meta.elevationLoss)m")
-                            .font(MagazineFont.monoMedium(13))
-                            .foregroundColor(MagazineColors.completed)
-                    }
-                    Text("\(meta.startAltitude)m → \(meta.finishAltitude)m")
-                        .font(MagazineFont.timingSmall)
-                        .foregroundColor(MagazineColors.textTertiary)
-                }
-            }
-
-            Rectangle().fill(MagazineColors.divider).frame(height: 0.5)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.Stage.historicalBest)
-                    .font(MagazineFont.caption)
-                    .foregroundColor(MagazineColors.textTertiary)
-                HStack(spacing: 10) {
-                    Text(meta.historicalFastest)
-                        .font(MagazineFont.monoBold(18))
-                        .foregroundColor(MagazineColors.accent)
-                    Text(meta.historicalDriver)
-                        .font(MagazineFont.caption)
-                        .foregroundColor(MagazineColors.textSecondary)
-                }
-            }
-        }
-        .padding(20)
-        .magazineCard()
-    }
-
-    private func stageMapPlaceholder(_ meta: StageMetadata) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(MagazineColors.surfaceAlt)
-                .frame(height: 120)
-
-            VStack(spacing: 8) {
-                Image(systemName: "map")
-                    .font(.title2)
-                    .foregroundColor(MagazineColors.textTertiary)
-
-                HStack(spacing: 16) {
-                    Label("\(meta.startAltitude)m", systemImage: "flag")
-                        .font(MagazineFont.monoMedium(11))
-                        .foregroundColor(MagazineColors.textTertiary)
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundColor(MagazineColors.textTertiary)
-                    Label("\(meta.finishAltitude)m", systemImage: "flag.checkered")
-                        .font(MagazineFont.monoMedium(11))
-                        .foregroundColor(MagazineColors.textTertiary)
-                }
-            }
-        }
-    }
-
-    private func weatherLabel(_ weather: String) -> String {
-        switch weather {
-        case "sunny": return L10n.Stage.sunny
-        case "cloudy": return L10n.Stage.cloudy
-        case "rain": return L10n.Stage.rain
-        case "snow": return L10n.Stage.snow
-        default: return L10n.Stage.cloudy
-        }
-    }
-
-    private func weatherColor(_ weather: String) -> Color {
-        switch weather {
-        case "sunny": return Color(hex: "#FBBF24")
-        case "cloudy": return Color(hex: "#9CA3AF")
-        case "rain": return Color(hex: "#60A5FA")
-        case "snow": return Color(hex: "#E0F2FE")
-        default: return Color(hex: "#9CA3AF")
-        }
-    }
 }
 
 struct ResultRow: View {

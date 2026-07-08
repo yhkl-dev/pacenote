@@ -7,7 +7,6 @@ final class EventViewModel {
     var overallStandings: [StageResult] = []
     var stages: [Stage] = []
     var selectedStageResults: [StageResult] = []
-    var selectedStageMeta: StageMetadata?
     var isLoading = false
     var errorMessage: String?
 
@@ -30,9 +29,7 @@ final class EventViewModel {
             stages = s
             overallStandings = o
         } catch {
-            let mock = MockDataService.shared
-            stages = await mock.stages(for: eventId)
-            overallStandings = await mock.overallStandings()
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
@@ -44,24 +41,20 @@ final class EventViewModel {
             let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
             selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
         } catch {
-            selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
+            errorMessage = error.localizedDescription
         }
     }
 
-    func loadStageMeta(stageId: String) async {
-        selectedStageMeta = await MockDataService.shared.stageMeta(stageId: stageId)
-    }
-
     private func fetchStages(eventId: String) async throws -> [Stage] {
-        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/itinerary")
-        let decoded = try JSONDecoder().decode(ItineraryResponse.self, from: raw)
-        return decoded.stages.map { $0.toModel(eventId: eventId) }
+        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/stages")
+        let decoded = try JSONDecoder().decode(ScheduleResponse.self, from: raw)
+        return decoded.stages.map { $0.toStageModel(eventId: eventId) }
     }
 
     private func fetchOverall(eventId: String) async throws -> [StageResult] {
-        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/overall")
-        let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
-        return decoded.results.map { $0.toModel(stageId: "overall") }
+        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/summary")
+        let decoded = try JSONDecoder().decode(SportradarSummaryResponse.self, from: raw)
+        return decoded.results
     }
 
     func gapRatio(for diffFirst: String) -> Double {
@@ -80,41 +73,75 @@ final class EventViewModel {
     }
 }
 
-struct CNFields: Decodable {
-    let name: String?
-    let status: String?
-    let surface: String?
-    let country: String?
-    let group: String?
-    let nationality: String?
-}
-
-struct ItineraryResponse: Decodable {
-    let stages: [StageDTO]
-}
-
-struct StageDTO: Decodable {
-    let stageId: String; let name: String; let stageNumber: Int
-    let distance: Double?; let surface: String?; let status: String?
-    let startTime: String?; let firstCarTime: String?
-    let _cn: CNFields?
-
-    func toModel(eventId: String) -> Stage {
-        let translation = TranslationService.shared
+extension RallyStageDTO {
+    func toStageModel(eventId: String) -> Stage {
         let isoFormatter = ISO8601DateFormatter()
+        let start = isoFormatter.date(from: scheduled) ?? Date()
         return Stage(
-            stageId: stageId,
+            stageId: id,
             eventId: eventId,
-            name: name,
-            stageNumber: stageNumber,
-            distance: distance ?? 0,
-            surface: surface ?? "",
-            surfaceCN: _cn?.surface ?? surface.map { translation.translateSurface($0) } ?? "",
+            name: description,
+            stageNumber: 0,
+            distance: 0,
+            surface: "",
+            surfaceCN: "",
             statusRaw: status ?? "upcoming",
-            startTime: startTime.flatMap { isoFormatter.date(from: $0) },
-            firstCarTime: firstCarTime.flatMap { isoFormatter.date(from: $0) }
+            startTime: start
         )
     }
+}
+
+struct SportradarSummaryResponse: Decodable {
+    let results: [StageResult]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let stage = try container.decode(StageWithCompetitors.self, forKey: .stage)
+        results = stage.competitors.map { comp in
+            StageResult(
+                stageId: "overall",
+                position: comp.result.position,
+                driverName: comp.name,
+                driverId: comp.id,
+                carNumber: comp.carNumber ?? 0,
+                group: "",
+                stageTime: comp.result.gap ?? "—",
+                diffFirst: comp.result.gap ?? "—",
+                diffPrev: ""
+            )
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case stage
+    }
+}
+
+struct StageWithCompetitors: Decodable {
+    let competitors: [SRCompetitor]
+
+    enum CodingKeys: String, CodingKey {
+        case competitors
+    }
+}
+
+struct SRCompetitor: Decodable {
+    let id: String
+    let name: String
+    let carNumber: Int?
+    let result: SRResult
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, result
+        case carNumber = "car_number"
+    }
+}
+
+struct SRResult: Decodable {
+    let position: Int
+    let points: Double?
+    let status: String?
+    let gap: String?
 }
 
 struct StageResultsResponse: Decodable {
