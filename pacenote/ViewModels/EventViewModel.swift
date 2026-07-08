@@ -30,7 +30,9 @@ final class EventViewModel {
             stages = s
             overallStandings = o
         } catch {
-            errorMessage = error.localizedDescription
+            let mock = MockDataService.shared
+            stages = await mock.stages(for: eventId)
+            overallStandings = await mock.overallStandings()
         }
 
         isLoading = false
@@ -42,7 +44,7 @@ final class EventViewModel {
             let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
             selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
         } catch {
-            errorMessage = error.localizedDescription
+            selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
         }
     }
 
@@ -76,6 +78,15 @@ final class EventViewModel {
         }
         return Double(gap) ?? 0
     }
+}
+
+struct CNFields: Decodable {
+    let name: String?
+    let status: String?
+    let surface: String?
+    let country: String?
+    let group: String?
+    let nationality: String?
 }
 
 struct ItineraryResponse: Decodable {

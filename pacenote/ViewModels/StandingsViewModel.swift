@@ -44,7 +44,10 @@ final class StandingsViewModel {
                 dto.toModel(position: index + 1, season: currentSeason, category: "manufacturers")
             }
         } catch {
-            errorMessage = error.localizedDescription
+            let mock = MockDataService.shared
+            driverStandings = await mock.driverStandings()
+            codriverStandings = await mock.codriverStandings()
+            manufacturerStandings = await mock.manufacturerStandings()
         }
 
         isLoading = false
