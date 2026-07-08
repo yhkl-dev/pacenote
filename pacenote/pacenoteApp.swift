@@ -9,7 +9,6 @@ struct pacenoteApp: App {
         let schema = Schema([
             RallyEvent.self,
             Stage.self,
-            StageResult.self,
             Driver.self,
             Standing.self,
         ])

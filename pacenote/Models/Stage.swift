@@ -43,8 +43,8 @@ final class Stage {
     }
 }
 
-@Model
-final class StageResult {
+struct StageResult: Identifiable, Codable {
+    var id: String { "\(stageId)-\(driverId)" }
     var stageId: String
     var position: Int
     var driverName: String
@@ -55,30 +55,6 @@ final class StageResult {
     var diffFirst: String
     var diffPrev: String
     var speed: Double?
-
-    init(
-        stageId: String,
-        position: Int,
-        driverName: String,
-        driverId: String,
-        carNumber: Int,
-        group: String,
-        stageTime: String,
-        diffFirst: String,
-        diffPrev: String,
-        speed: Double? = nil
-    ) {
-        self.stageId = stageId
-        self.position = position
-        self.driverName = driverName
-        self.driverId = driverId
-        self.carNumber = carNumber
-        self.group = group
-        self.stageTime = stageTime
-        self.diffFirst = diffFirst
-        self.diffPrev = diffPrev
-        self.speed = speed
-    }
 }
 
 struct SplitTime: Codable, Identifiable {
