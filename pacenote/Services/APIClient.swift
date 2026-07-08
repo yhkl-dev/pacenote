@@ -1,14 +1,21 @@
 import Foundation
 
+enum DataSourceMode {
+    case auto
+    case mock
+}
+
 actor APIClient {
     static let shared = APIClient()
 
-    private let baseURL: String
+    private let workerBaseURL: String
     private let session: URLSession
     private let decoder: JSONDecoder
 
+    var dataSource: DataSourceMode = .auto
+
     private init() {
-        baseURL = APIClient.resolveBaseURL()
+        workerBaseURL = APIClient.resolveWorkerURL()
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
         config.waitsForConnectivity = true
@@ -17,18 +24,25 @@ actor APIClient {
         decoder.dateDecodingStrategy = .iso8601
     }
 
-    private static func resolveBaseURL() -> String {
+    private static func resolveWorkerURL() -> String {
         if let url = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String {
             return url
         }
-        return "https://api.wrc.com"
+        return "https://pacenote-api.kaiyang939325.workers.dev"
+    }
+
+    var baseURL: String {
+        workerBaseURL
     }
 }
 
 extension APIClient {
     func fetch<T: Decodable>(_ endpoint: String, as type: T.Type) async throws -> T {
-        let url = URL(string: "\(baseURL)\(endpoint)")!
-        let (data, response) = try await session.data(from: url)
+        let url = URL(string: "\(workerBaseURL)\(endpoint)")!
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -46,8 +60,11 @@ extension APIClient {
     }
 
     func fetchRaw(_ endpoint: String) async throws -> Data {
-        let url = URL(string: "\(baseURL)\(endpoint)")!
-        let (data, response) = try await session.data(from: url)
+        let url = URL(string: "\(workerBaseURL)\(endpoint)")!
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -69,10 +86,10 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: return "服务器响应无效"
-        case .httpError(let code): return "服务器错误 (\(code))"
-        case .decodingFailed: return "数据解析失败"
-        case .noConnection: return "网络连接不可用"
+        case .invalidResponse: return L10n.Error.server
+        case .httpError(let code): return "\(L10n.Error.server) (\(code))"
+        case .decodingFailed: return L10n.Error.decoding
+        case .noConnection: return L10n.Error.network
         }
     }
 }

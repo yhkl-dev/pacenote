@@ -17,6 +17,7 @@ final class EventViewModel {
         return parseGapToSeconds(gapStr)
     }
 
+    var dataSource: DataSourceMode = .auto
     private let apiClient = APIClient.shared
 
     func loadEventDetail(eventId: String) async {
@@ -24,11 +25,17 @@ final class EventViewModel {
         errorMessage = nil
 
         do {
-            async let stagesTask = fetchStages(eventId: eventId)
-            async let overallTask = fetchOverall(eventId: eventId)
-            let (fetchedStages, fetchedOverall) = try await (stagesTask, overallTask)
-            stages = fetchedStages
-            overallStandings = fetchedOverall
+            if dataSource == .mock {
+                let mock = MockDataService.shared
+                stages = await mock.stages(for: eventId)
+                overallStandings = await mock.overallStandings()
+            } else {
+                async let stagesTask = fetchStages(eventId: eventId)
+                async let overallTask = fetchOverall(eventId: eventId)
+                let (s, o) = try await (stagesTask, overallTask)
+                stages = s
+                overallStandings = o
+            }
         } catch {
             let mock = MockDataService.shared
             stages = await mock.stages(for: eventId)
@@ -40,9 +47,13 @@ final class EventViewModel {
 
     func loadStageResults(eventId: String, stageId: String) async {
         do {
-            let raw = try await apiClient.fetchRaw("/results-api/rally-event/\(eventId)/stage-result/\(stageId)")
-            let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
-            selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
+            if dataSource == .mock {
+                selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
+            } else {
+                let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/stage/\(stageId)")
+                let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
+                selectedStageResults = decoded.results.map { $0.toModel(stageId: stageId) }
+            }
         } catch {
             selectedStageResults = await MockDataService.shared.stageResults(stageId: stageId)
         }
@@ -53,13 +64,13 @@ final class EventViewModel {
     }
 
     private func fetchStages(eventId: String) async throws -> [Stage] {
-        let raw = try await apiClient.fetchRaw("/results-api/rally-event/\(eventId)/itinerary")
+        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/itinerary")
         let decoded = try JSONDecoder().decode(ItineraryResponse.self, from: raw)
         return decoded.stages.map { $0.toModel(eventId: eventId) }
     }
 
     private func fetchOverall(eventId: String) async throws -> [StageResult] {
-        let raw = try await apiClient.fetchRaw("/results-api/rally-event/\(eventId)/overall")
+        let raw = try await apiClient.fetchRaw("/api/event/\(eventId)/overall")
         let decoded = try JSONDecoder().decode(StageResultsResponse.self, from: raw)
         return decoded.results.map { $0.toModel(stageId: "overall") }
     }
@@ -88,11 +99,14 @@ struct StageDTO: Decodable {
     let stageId: String; let name: String; let stageNumber: Int
     let distance: Double?; let surface: String?; let status: String?
     let startTime: String?; let firstCarTime: String?
+    let _cn: CNFields?
 
     func toModel(eventId: String) -> Stage {
         let translation = TranslationService.shared
         let isoFormatter = ISO8601DateFormatter()
-        return Stage(stageId: stageId, eventId: eventId, name: name, stageNumber: stageNumber, distance: distance ?? 0, surface: surface ?? "", surfaceCN: surface.map { translation.translateSurface($0) } ?? "", statusRaw: status ?? "upcoming", startTime: startTime.flatMap { isoFormatter.date(from: $0) }, firstCarTime: firstCarTime.flatMap { isoFormatter.date(from: $0) })
+        let cnSurface = _cn?.surface ?? surface.map { translation.translateSurface($0) } ?? ""
+        let cnStatus = _cn?.status
+        return Stage(stageId: stageId, eventId: eventId, name: name, stageNumber: stageNumber, distance: distance ?? 0, surface: surface ?? "", surfaceCN: cnSurface, statusRaw: status ?? "upcoming", startTime: startTime.flatMap { isoFormatter.date(from: $0) }, firstCarTime: firstCarTime.flatMap { isoFormatter.date(from: $0) })
     }
 }
 

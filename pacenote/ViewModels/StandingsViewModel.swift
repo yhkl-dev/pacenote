@@ -11,6 +11,7 @@ final class StandingsViewModel {
     var isLoading = false
     var errorMessage: String?
 
+    var dataSource: DataSourceMode = .auto
     private let apiClient = APIClient.shared
     private let currentSeason: Int
 
@@ -31,9 +32,15 @@ final class StandingsViewModel {
         errorMessage = nil
 
         do {
-            let raw = try await apiClient.fetchRaw(
-                "/results-api/season/\(currentSeason)/championship"
-            )
+            if dataSource == .mock {
+                let mock = MockDataService.shared
+                driverStandings = await mock.driverStandings()
+                codriverStandings = await mock.codriverStandings()
+                manufacturerStandings = await mock.manufacturerStandings()
+                isLoading = false
+                return
+            }
+            let raw = try await apiClient.fetchRaw("/api/standings/\(currentSeason)")
             let decoded = try JSONDecoder().decode(ChampionshipResponse.self, from: raw)
 
             driverStandings = decoded.drivers.enumerated().map { index, dto in
