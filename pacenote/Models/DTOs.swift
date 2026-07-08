@@ -14,7 +14,7 @@ struct RallyStageDTO: Decodable {
     let venue: RallyVenueDTO?
     let stages: [RallyStageDTO]?
 
-    var scheduled_end: String { scheduledEnd ?? scheduled }
+    var scheduledEndOrScheduled: String { scheduledEnd ?? scheduled }
 }
 
 struct RallyVenueDTO: Decodable {
@@ -42,7 +42,7 @@ struct SportradarSeason: Decodable {
     let scheduledEnd: String?
     let type: String?
 
-    var scheduled_end: String { scheduledEnd ?? scheduled }
+    var scheduledEndOrScheduled: String { scheduledEnd ?? scheduled }
 }
 
 func guessSurface(country: String) -> String {

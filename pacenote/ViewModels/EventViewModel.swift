@@ -30,7 +30,7 @@ final class EventViewModel {
             overallStandings = o
         } catch {
             errorMessage = "\(error.localizedDescription)"
-            print("EventDetail error: \(error)")
+            errorMessage = "\(error.localizedDescription)"
         }
 
         isLoading = false

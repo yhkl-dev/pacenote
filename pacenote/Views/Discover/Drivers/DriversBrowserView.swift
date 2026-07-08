@@ -10,8 +10,14 @@ final class DriversBrowserViewModel {
     func load() async {
         isLoading = true
         do {
-            let raw = try await APIClient.shared.fetchRaw("/api/event/sr:stage:1315613/summary")
-            let data = try JSONDecoder().decode(RawSummaryJSON.self, from: raw)
+            let seasonsRaw = try await APIClient.shared.fetchRaw("/api/seasons")
+            let seasons = try JSONDecoder().decode(SportradarSeasonsResponse.self, from: seasonsRaw)
+            let wrcId = seasons.stages.first(where: { $0.description.contains("World Rally Championship") })?.id ?? "sr:stage:1315611"
+            let raw = try await APIClient.shared.fetchRaw("/api/seasons/\(wrcId)/events")
+            let schedule = try JSONDecoder().decode(ScheduleResponse.self, from: raw)
+            guard let firstEvent = schedule.stages.first else { throw APIError.invalidResponse }
+            let eventRaw = try await APIClient.shared.fetchRaw("/api/event/\(firstEvent.id)/summary")
+            let data = try JSONDecoder().decode(RawSummaryJSON.self, from: eventRaw)
             drivers = data.extractDrivers()
         } catch {
             errorMessage = error.localizedDescription

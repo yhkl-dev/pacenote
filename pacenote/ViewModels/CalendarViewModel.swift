@@ -17,7 +17,9 @@ final class CalendarViewModel {
         do {
             let raw = try await apiClient.fetchRaw("/api/calendar")
             let decoded = try JSONDecoder().decode(ScheduleResponse.self, from: raw)
-            events = decoded.stages.map { $0.toModel() }
+            events = decoded.stages.enumerated().map { index, stage in
+                stage.toModel(roundNumber: index + 1)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -39,10 +41,10 @@ final class CalendarViewModel {
 }
 
 extension RallyStageDTO {
-    func toModel() -> RallyEvent {
+    func toModel(roundNumber: Int = 0) -> RallyEvent {
         let isoFormatter = ISO8601DateFormatter()
         let start = isoFormatter.date(from: scheduled) ?? Date()
-        let end = isoFormatter.date(from: scheduled_end) ?? Date()
+        let end = isoFormatter.date(from: scheduledEndOrScheduled) ?? Date()
         let translation = TranslationService.shared
 
         let eventStatus: String = normalizeSportradarStatus(status)
@@ -62,7 +64,7 @@ extension RallyStageDTO {
             endDate: end,
             statusRaw: eventStatus,
             season: Calendar.current.component(.year, from: start),
-            roundNumber: 0
+            roundNumber: roundNumber
         )
     }
 }

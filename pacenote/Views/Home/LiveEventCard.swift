@@ -8,7 +8,7 @@ struct LiveEventCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if spoilerFree && !revealed {
+            if spoilerFree && !revealed && event.status == .completed {
                 spoilerOverlay
             } else {
                 liveContent
