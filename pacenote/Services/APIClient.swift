@@ -28,7 +28,7 @@ actor APIClient {
         if let url = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String {
             return url
         }
-        return "https://pacenote-api.kaiyang939325.workers.dev"
+        return "https://pacenote.visionary-future.com"
     }
 
     var baseURL: String {
